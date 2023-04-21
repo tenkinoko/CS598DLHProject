@@ -8,6 +8,8 @@ from layers import GraphConvolution
 '''
 Our model
 '''
+
+
 class GCN(nn.Module):
     def __init__(self, voc_size, emb_dim, adj, device=torch.device('cpu:0')):
         super(GCN, self).__init__()
@@ -40,6 +42,7 @@ class GCN(nn.Module):
         mx = r_mat_inv.dot(mx)
         return mx
 
+
 class GAMENet(nn.Module):
     def __init__(self, vocab_size, ehr_adj, ddi_adj, emb_dim=64, device=torch.device('cpu:0'), ddi_in_memory=True):
         super(GAMENet, self).__init__()
@@ -50,10 +53,10 @@ class GAMENet(nn.Module):
         self.tensor_ddi_adj = torch.FloatTensor(ddi_adj).to(device)
         self.ddi_in_memory = ddi_in_memory
         self.embeddings = nn.ModuleList(
-            [nn.Embedding(vocab_size[i], emb_dim) for i in range(K-1)])
+            [nn.Embedding(vocab_size[i], emb_dim) for i in range(K - 1)])
         self.dropout = nn.Dropout(p=0.4)
 
-        self.encoders = nn.ModuleList([nn.GRU(emb_dim, emb_dim*2, batch_first=True) for _ in range(K-1)])
+        self.encoders = nn.ModuleList([nn.GRU(emb_dim, emb_dim * 2, batch_first=True) for _ in range(K - 1)])
 
         self.query = nn.Sequential(
             nn.ReLU(),
@@ -79,28 +82,32 @@ class GAMENet(nn.Module):
         # generate medical embeddings and queries
         i1_seq = []
         i2_seq = []
+
         def mean_embedding(embedding):
             return embedding.mean(dim=1).unsqueeze(dim=0)  # (1,1,dim)
+
         for adm in input:
-            i1 = mean_embedding(self.dropout(self.embeddings[0](torch.LongTensor(adm[0]).unsqueeze(dim=0).to(self.device)))) # (1,1,dim)
-            i2 = mean_embedding(self.dropout(self.embeddings[1](torch.LongTensor(adm[1]).unsqueeze(dim=0).to(self.device))))
+            i1 = mean_embedding(self.dropout(
+                self.embeddings[0](torch.LongTensor(adm[0]).unsqueeze(dim=0).to(self.device))))  # (1,1,dim)
+            i2 = mean_embedding(
+                self.dropout(self.embeddings[1](torch.LongTensor(adm[1]).unsqueeze(dim=0).to(self.device))))
             i1_seq.append(i1)
             i2_seq.append(i2)
-        i1_seq = torch.cat(i1_seq, dim=1) #(1,seq,dim)
-        i2_seq = torch.cat(i2_seq, dim=1) #(1,seq,dim)
+        i1_seq = torch.cat(i1_seq, dim=1)  # (1,seq,dim)
+        i2_seq = torch.cat(i2_seq, dim=1)  # (1,seq,dim)
 
         o1, h1 = self.encoders[0](
             i1_seq
-        ) # o1:(1, seq, dim*2) hi:(1,1,dim*2)
+        )  # o1:(1, seq, dim*2) hi:(1,1,dim*2)
         o2, h2 = self.encoders[1](
             i2_seq
         )
-        patient_representations = torch.cat([o1, o2], dim=-1).squeeze(dim=0) # (seq, dim*4)
-        queries = self.query(patient_representations) # (seq, dim)
+        patient_representations = torch.cat([o1, o2], dim=-1).squeeze(dim=0)  # (seq, dim*4)
+        queries = self.query(patient_representations)  # (seq, dim)
 
         # graph memory module
         '''I:generate current input'''
-        query = queries[-1:] # (1,dim)
+        query = queries[-1:]  # (1,dim)
 
         '''G:generate graph memory bank and insert history information'''
         if self.ddi_in_memory:
@@ -109,27 +116,27 @@ class GAMENet(nn.Module):
             drug_memory = self.ehr_gcn()
 
         if len(input) > 1:
-            history_keys = queries[:(queries.size(0)-1)] # (seq-1, dim)
+            history_keys = queries[:(queries.size(0) - 1)]  # (seq-1, dim)
 
-            history_values = np.zeros((len(input)-1, self.vocab_size[2]))
+            history_values = np.zeros((len(input) - 1, self.vocab_size[2]))
             for idx, adm in enumerate(input):
-                if idx == len(input)-1:
+                if idx == len(input) - 1:
                     break
                 history_values[idx, adm[2]] = 1
-            history_values = torch.FloatTensor(history_values).to(self.device) # (seq-1, size)
+            history_values = torch.FloatTensor(history_values).to(self.device)  # (seq-1, size)
 
         '''O:read from global memory bank and dynamic memory bank'''
         key_weights1 = F.softmax(torch.mm(query, drug_memory.t()), dim=-1)  # (1, size)
         fact1 = torch.mm(key_weights1, drug_memory)  # (1, dim)
 
         if len(input) > 1:
-            visit_weight = F.softmax(torch.mm(query, history_keys.t())) # (1, seq-1)
-            weighted_values = visit_weight.mm(history_values) # (1, size)
-            fact2 = torch.mm(weighted_values, drug_memory) # (1, dim)
+            visit_weight = F.softmax(torch.mm(query, history_keys.t()))  # (1, seq-1)
+            weighted_values = visit_weight.mm(history_values)  # (1, size)
+            fact2 = torch.mm(weighted_values, drug_memory)  # (1, dim)
         else:
             fact2 = fact1
         '''R:convert O and predict'''
-        output = self.output(torch.cat([query, fact1, fact2], dim=-1)) # (1, dim)
+        output = self.output(torch.cat([query, fact1, fact2], dim=-1))  # (1, dim)
 
         if self.training:
             neg_pred_prob = F.sigmoid(output)
@@ -148,9 +155,12 @@ class GAMENet(nn.Module):
 
         self.inter.data.uniform_(-initrange, initrange)
 
+
 '''
 DMNC
 '''
+
+
 class DMNC(nn.Module):
     def __init__(self, vocab_size, emb_dim=64, device=torch.device('cpu:0')):
         super(DMNC, self).__init__()
@@ -288,13 +298,15 @@ class DMNC(nn.Module):
 '''
 Leap
 '''
+
+
 class Leap(nn.Module):
     def __init__(self, voc_size, emb_dim=128, device=torch.device('cpu:0')):
         super(Leap, self).__init__()
         self.voc_size = voc_size
         self.device = device
         self.SOS_TOKEN = voc_size[2]
-        self.END_TOKEN = voc_size[2]+1
+        self.END_TOKEN = voc_size[2] + 1
 
         self.enc_embedding = nn.Sequential(
             nn.Embedding(voc_size[0], emb_dim, ),
@@ -305,12 +317,11 @@ class Leap(nn.Module):
             nn.Dropout(0.3)
         )
 
-        self.dec_gru = nn.GRU(emb_dim*2, emb_dim, batch_first=True)
+        self.dec_gru = nn.GRU(emb_dim * 2, emb_dim, batch_first=True)
 
-        self.attn = nn.Linear(emb_dim*2, 1)
+        self.attn = nn.Linear(emb_dim * 2, 1)
 
-        self.output = nn.Linear(emb_dim, voc_size[2]+2)
-
+        self.output = nn.Linear(emb_dim, voc_size[2] + 2)
 
     def forward(self, input, max_len=20):
         device = self.device
@@ -324,18 +335,19 @@ class Leap(nn.Module):
         if self.training:
             for med_code in [self.SOS_TOKEN] + input[2]:
                 dec_input = torch.LongTensor([med_code]).unsqueeze(dim=0).to(device)
-                dec_input = self.dec_embedding(dec_input).squeeze(dim=0) # (1,dim)
+                dec_input = self.dec_embedding(dec_input).squeeze(dim=0)  # (1,dim)
 
                 if hidden_state is None:
                     hidden_state = dec_input
 
-                hidden_state_repeat = hidden_state.repeat(input_embedding.size(0), 1) # (len, dim)
-                combined_input = torch.cat([hidden_state_repeat, input_embedding], dim=-1) # (len, dim*2)
-                attn_weight = F.softmax(self.attn(combined_input).t(), dim=-1) # (1, len)
-                input_embedding = attn_weight.mm(input_embedding) # (1, dim)
+                hidden_state_repeat = hidden_state.repeat(input_embedding.size(0), 1)  # (len, dim)
+                combined_input = torch.cat([hidden_state_repeat, input_embedding], dim=-1)  # (len, dim*2)
+                attn_weight = F.softmax(self.attn(combined_input).t(), dim=-1)  # (1, len)
+                input_embedding = attn_weight.mm(input_embedding)  # (1, dim)
 
-                _, hidden_state = self.dec_gru(torch.cat([input_embedding, dec_input], dim=-1).unsqueeze(dim=0), hidden_state.unsqueeze(dim=0))
-                hidden_state = hidden_state.squeeze(dim=0) # (1,dim)
+                _, hidden_state = self.dec_gru(torch.cat([input_embedding, dec_input], dim=-1).unsqueeze(dim=0),
+                                               hidden_state.unsqueeze(dim=0))
+                hidden_state = hidden_state.squeeze(dim=0)  # (1,dim)
 
                 output_logits.append(self.output(F.relu(hidden_state)))
 
@@ -345,7 +357,7 @@ class Leap(nn.Module):
             for di in range(max_len):
                 if di == 0:
                     dec_input = torch.LongTensor([[self.SOS_TOKEN]]).to(device)
-                dec_input = self.dec_embedding(dec_input).squeeze(dim=0) # (1,dim)
+                dec_input = self.dec_embedding(dec_input).squeeze(dim=0)  # (1,dim)
                 if hidden_state is None:
                     hidden_state = dec_input
                 hidden_state_repeat = hidden_state.repeat(input_embedding.size(0), 1)  # (len, dim)
@@ -361,9 +373,12 @@ class Leap(nn.Module):
                 dec_input = topi.detach()
             return torch.cat(output_logits, dim=0)
 
+
 '''
 Retain
 '''
+
+
 class Retain(nn.Module):
     def __init__(self, voc_size, emb_size=64, device=torch.device('cpu:0')):
         super(Retain, self).__init__()
@@ -397,28 +412,27 @@ class Retain(nn.Module):
             input_tmp.extend(list(np.array(visit[1]) + self.voc_size[0]))
             input_tmp.extend(list(np.array(visit[2]) + self.voc_size[0] + self.voc_size[1]))
             if len(input_tmp) < max_len:
-                input_tmp.extend( [self.input_len]*(max_len - len(input_tmp)) )
+                input_tmp.extend([self.input_len] * (max_len - len(input_tmp)))
 
             input_np.append(input_tmp)
 
-        visit_emb = self.embedding(torch.LongTensor(input_np).to(device)) # (visit, max_len, emb)
-        visit_emb = torch.sum(visit_emb, dim=1) # (visit, emb)
+        visit_emb = self.embedding(torch.LongTensor(input_np).to(device))  # (visit, max_len, emb)
+        visit_emb = torch.sum(visit_emb, dim=1)  # (visit, emb)
 
-        g, _ = self.alpha_gru(visit_emb.unsqueeze(dim=0)) # g: (1, visit, emb)
-        h, _ = self.beta_gru(visit_emb.unsqueeze(dim=0)) # h: (1, visit, emb)
+        g, _ = self.alpha_gru(visit_emb.unsqueeze(dim=0))  # g: (1, visit, emb)
+        h, _ = self.beta_gru(visit_emb.unsqueeze(dim=0))  # h: (1, visit, emb)
 
-        g = g.squeeze(dim=0) # (visit, emb)
-        h = h.squeeze(dim=0) # (visit, emb)
-        attn_g = F.softmax(self.alpha_li(g), dim=-1) # (visit, 1)
-        attn_h = F.tanh(self.beta_li(h)) # (visit, emb)
+        g = g.squeeze(dim=0)  # (visit, emb)
+        h = h.squeeze(dim=0)  # (visit, emb)
+        attn_g = F.softmax(self.alpha_li(g), dim=-1)  # (visit, 1)
+        attn_h = F.tanh(self.beta_li(h))  # (visit, emb)
 
-        c = attn_g * attn_h * visit_emb # (visit, emb)
-        c = torch.sum(c, dim=0).unsqueeze(dim=0) # (1, emb)
+        c = attn_g * attn_h * visit_emb  # (visit, emb)
+        c = torch.sum(c, dim=0).unsqueeze(dim=0)  # (1, emb)
 
         return self.output(c)
+
 
 '''
 RF in train_LR.py
 '''
-
-

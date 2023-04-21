@@ -92,6 +92,7 @@ def main():
     if not os.path.exists(os.path.join("saved", model_name)):
         os.makedirs(os.path.join("saved", model_name))
 
+    current_path = "D:/UIUC/23spr/CS598DLH/Project"
     data_path = '../data/records_final.pkl'
     voc_path = '../data/voc_final.pkl'
 

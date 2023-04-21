@@ -8,8 +8,11 @@ This repository contains code necessary to run GAMENet model. GAMENet is an end-
 
 
 ## Requirements
+```shell
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+```
 - Pytorch >=0.4
-- Python >=3.5
+- Python >=3.5 <=3.7
 
 
 ## Running the code

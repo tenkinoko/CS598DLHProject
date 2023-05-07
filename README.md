@@ -4,7 +4,7 @@ This repository is the reproducibility project for CS598 Deep Learning for Healt
 
 ## Citation
 
-The content in this repository is mainly taken from the [repository](https://github.com/sjy1203/GAMENet) from the original author of the [paper]([[1809.01852\] GAMENet: Graph Augmented MEmory Networks for Recommending Medication Combination (arxiv.org)](https://arxiv.org/abs/1809.01852)) GAMENet: Graph Augmented MEmory Networks for Recommending Medication Combination.
+The content in this repository is mainly taken from the [repository](https://github.com/sjy1203/GAMENet) from the original author of the [paper](https://arxiv.org/abs/1809.01852) GAMENet: Graph Augmented MEmory Networks for Recommending Medication Combination.
 
 ## Overview
 This repository contains code necessary to run GAMENet model. GAMENet is an end-to-end model mainly based on graph convolutional networks (GCN) and memory augmented nerual networks (MANN). Paitent history information and drug-drug interactions knowledge are utilized to provide safe and personalized recommendation of medication combination. GAMENet is tested on real-world clinical dataset [MIMIC-III](https://mimic.physionet.org/) and outperformed several state-of-the-art deep learning methods in heathcare area in all effectiveness measures and also achieved higher DDI rate reduction from existing EHR data.

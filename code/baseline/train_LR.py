@@ -5,11 +5,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.multiclass import OneVsRestClassifier
 from collections import defaultdict
 from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import jaccard_similarity_score
+# from sklearn.metrics import jaccard_similarity_score
 import os
 
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 from util import multi_label_metric
 
 np.random.seed(1203)

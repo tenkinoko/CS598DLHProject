@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from sklearn.metrics import jaccard_similarity_score, roc_auc_score, precision_score, f1_score, average_precision_score
+from sklearn.metrics import roc_auc_score, precision_score, f1_score, average_precision_score
 import numpy as np
 import dill
 import time
